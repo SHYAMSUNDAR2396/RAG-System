@@ -1,8 +1,11 @@
 import logging
+import os
 
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
 load_dotenv()
 
@@ -26,8 +29,39 @@ query = "What was NVIDIA's first graphics accelerator called?"
 
 retriever = db.as_retriever(search_kwargs={"k": 5})
 
-relevent_docs = retriever.invoke(query)
+relevant_docs = retriever.invoke(query)
 print(f"user query: {query}")
 print("----- Context -----")
-for i, doc in enumerate(relevent_docs):
+for i, doc in enumerate(relevant_docs):
     print(f"Document {i}: {doc.page_content}\n")
+
+combined_input = f"""Answer the question based on the following documents, please answer this question: {query}
+Documents: 
+{chr(10).join([f"document {i}: {doc.page_content}" for i, doc in enumerate(relevant_docs)])}
+please provide a concise and accurate answer based on the information from the documents. If the documents do not contain enough information to answer the question, please indicate that as well.
+"""
+print("----- Combined Input -----")
+print(combined_input)
+# model_name = os.getenv("GEMINI_MODEL", "Gemini 2.5 Flash-Lite")
+model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+messages = [
+    SystemMessage(content="You are a helpful assistant that answers questions based on the provided documents. Please provide concise and accurate answers based on the information from the documents. If the documents do not contain enough information to answer the question, please indicate that as well."),
+    HumanMessage(content=combined_input)
+]
+print("----- Answer -----")
+try:
+    result = model.invoke(messages)
+    print(result.content)
+except Exception as exc:
+    error_text = str(exc)
+    if "RESOURCE_EXHAUSTED" in error_text or "429" in error_text or "quota" in error_text.lower():
+        print(
+            "Gemini API quota is exhausted or unavailable for this project. "
+            "Set billing/quotas in Google AI Studio, wait for quota reset, "
+            "or use another API key/model via GEMINI_MODEL."
+        )
+        if relevant_docs:
+            print("Fallback answer from top retrieved context:")
+            print(relevant_docs[0].page_content.splitlines()[0])
+    else:
+        raise
