@@ -25,7 +25,7 @@ db = Chroma(
     persist_directory=persist_directory,
     collection_metadata={"hnsw:space": "cosine"}
 )
-query = "What was NVIDIA's first graphics accelerator called?"
+query = input("Ask a question: ")
 
 retriever = db.as_retriever(search_kwargs={"k": 5})
 

@@ -1,7 +1,7 @@
 import os
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from dotenv import load_dotenv
