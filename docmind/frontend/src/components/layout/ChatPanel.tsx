@@ -47,6 +47,7 @@ export function ChatPanel({ className }: { className?: string }) {
   }, [messages, isStreaming]);
 
   return (
+  <ScrollArea ref={scrollRef} className="flex-1 p-2 md:p-4 pb-0">
     <div className={cn("flex flex-col relative", className)}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200">
@@ -64,7 +65,6 @@ export function ChatPanel({ className }: { className?: string }) {
       </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-2 md:p-4 pb-0">
         <div className="flex flex-col gap-4 md:gap-6 max-w-3xl mx-auto py-4 w-full">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center mt-20">
@@ -86,7 +86,6 @@ export function ChatPanel({ className }: { className?: string }) {
           )}
           <div ref={messagesEndRef} className="h-4" />
         </div>
-      </ScrollArea>
 
       {/* Input Area */}
       <div className="p-2 md:p-4 bg-white/80 backdrop-blur-sm border-t border-slate-200">
@@ -95,5 +94,6 @@ export function ChatPanel({ className }: { className?: string }) {
         </div>
       </div>
     </div>
+  </ScrollArea>
   );
 }
