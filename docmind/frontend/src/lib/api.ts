@@ -89,14 +89,24 @@ export const api = {
     }
   },
 
+  async listSessions(userEmail: string): Promise<{ id: string }[]> {
+    const res = await fetch(`${API_URL}/api/sessions?user_email=${encodeURIComponent(userEmail)}`);
+    return handleResponse<{ id: string }[]>(res);
+  },
+
   /**
    * Stream a chat response using Server-Sent Events (SSE)
    */
-  async *streamChat(sessionId: string, question: string, retrievalMode: RetrievalMode) {
+  async *streamChat(sessionId: string, question: string, retrievalMode: RetrievalMode, userEmail: string = 'anonymous') {
     const res = await fetch(`${API_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, question, retrieval_mode: retrievalMode }),
+      body: JSON.stringify({ 
+        session_id: sessionId, 
+        question, 
+        retrieval_mode: retrievalMode,
+        user_email: userEmail 
+      }),
     });
 
     if (!res.ok) {

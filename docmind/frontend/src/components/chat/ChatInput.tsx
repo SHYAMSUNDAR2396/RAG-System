@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { ArrowUp, Loader2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export function ChatInput() {
   const [input, setInput] = useState('');
@@ -19,6 +20,7 @@ export function ChatInput() {
     setCurrentSources,
     retrievalMode
   } = useAppStore();
+  const { data: session } = useSession();
 
   // Auto-resize textarea
   useEffect(() => {
@@ -51,7 +53,8 @@ export function ChatInput() {
 
     try {
       // 3. Consume SSE stream
-      const stream = api.streamChat(sessionId, question, retrievalMode);
+      const userEmail = session?.user?.email || 'anonymous';
+      const stream = api.streamChat(sessionId, question, retrievalMode, userEmail);
       
       for await (const event of stream) {
         if (event.token) {

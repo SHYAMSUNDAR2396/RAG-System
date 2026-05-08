@@ -31,6 +31,7 @@ class DocumentListResponse(BaseModel):
 class ChatRequest(BaseModel):
     """Request body for the chat endpoint."""
     session_id: str = Field(..., description="Unique session identifier")
+    user_email: str = Field(default="anonymous", description="User's email for identifying sessions")
     question: str = Field(..., min_length=1, description="User question")
     retrieval_mode: RetrievalMode = Field(
         default=RetrievalMode.SIMILARITY,

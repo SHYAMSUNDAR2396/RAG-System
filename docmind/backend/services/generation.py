@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from config import settings
 from models.schemas import ChatEvent, SourceChunk
+from db.database import chat_sessions_collection
 
 logger = logging.getLogger(__name__)
 
@@ -24,23 +25,40 @@ logger = logging.getLogger(__name__)
 sessions: dict[str, list[dict]] = {}
 
 
-def get_chat_history(session_id: str) -> list[dict]:
+async def get_chat_history(session_id: str) -> list[dict]:
     """Retrieve the full chat history for a session."""
-    if session_id not in sessions:
-        sessions[session_id] = []
-    return sessions[session_id]
+    if chat_sessions_collection is not None:
+        doc = await chat_sessions_collection.find_one({"_id": session_id})
+        if doc:
+            return doc.get("messages", [])
+        return []
+    return sessions.get(session_id, [])
 
 
-def add_message(session_id: str, role: str, content: str) -> None:
+async def add_message(session_id: str, role: str, content: str, user_email: str = "anonymous") -> None:
     """Add a message to the session's chat history."""
-    history = get_chat_history(session_id)
-    history.append({"role": role, "content": content})
+    if chat_sessions_collection is not None:
+        await chat_sessions_collection.update_one(
+            {"_id": session_id},
+            {
+                "$push": {"messages": {"role": role, "content": content}},
+                "$set": {"user_email": user_email}
+            },
+            upsert=True
+        )
+    else:
+        if session_id not in sessions:
+            sessions[session_id] = []
+        sessions[session_id].append({"role": role, "content": content})
 
 
-def clear_chat_history(session_id: str) -> None:
+async def clear_chat_history(session_id: str) -> None:
     """Clear all messages for a session."""
-    if session_id in sessions:
-        sessions[session_id] = []
+    if chat_sessions_collection is not None:
+        await chat_sessions_collection.delete_one({"_id": session_id})
+    else:
+        if session_id in sessions:
+            sessions[session_id] = []
 
 
 # ─── Prompt Assembly ─────────────────────────────────────────────
@@ -93,7 +111,8 @@ def _create_source_chunks(retrieved_docs: list[tuple]) -> list[SourceChunk]:
 async def generate_chat_stream(
     session_id: str,
     question: str,
-    retrieved_docs: list[tuple]
+    retrieved_docs: list[tuple],
+    user_email: str = "anonymous"
 ) -> AsyncGenerator[str, None]:
     """Generate an SSE stream for the chat response.
 
@@ -125,13 +144,13 @@ Context Documents:
     # 2. Assemble full message list (System + History + Current Question)
     messages = [SystemMessage(content=system_prompt)]
     
-    history = get_chat_history(session_id)
+    history = await get_chat_history(session_id)
     messages.extend(_format_history(history, settings.max_history_turns))
     
     messages.append(HumanMessage(content=question))
     
     # 3. Save user message to history
-    add_message(session_id, "user", question)
+    await add_message(session_id, "user", question, user_email)
     
     # 4. Stream response
     full_response = []
@@ -151,7 +170,7 @@ Context Documents:
                 
         # 5. Finished streaming — save assistant message to history
         assistant_text = "".join(full_response)
-        add_message(session_id, "assistant", assistant_text)
+        await add_message(session_id, "assistant", assistant_text, user_email)
         
         # 6. Yield final event with sources
         sources = _create_source_chunks(retrieved_docs)

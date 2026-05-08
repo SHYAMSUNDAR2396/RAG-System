@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path="../.env")
 
 from config import settings
-from routers import documents, chat, settings as settings_router
+from routers import documents, auth, chat, settings as settings_router
 from models.schemas import HealthResponse
 from services.ingestion import get_chroma_doc_count
 
@@ -58,6 +58,7 @@ app.add_middleware(
 # Mount routers
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(auth.router)
 app.include_router(settings_router.router)
 
 
